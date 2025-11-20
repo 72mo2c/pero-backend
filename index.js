@@ -13,6 +13,7 @@ const { sequelize, testConnection, syncDatabase } = require('./config/database')
 
 // Routes
 const companyRoutes = require('./routes/companyRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 
 // Middleware
 const { generalLimiter } = require('./middleware/rateLimiter');
@@ -28,11 +29,27 @@ const PORT = process.env.PORT || 5000;
 // Security Headers
 app.use(helmet());
 
-// CORS Configuration
+// CORS Configuration - السماح لتطبيق العملاء ولوحة التحكم
+const allowedOrigins = [
+  'http://localhost:3000',  // تطبيق العملاء
+  'http://localhost:3001',  // لوحة التحكم المنفصلة
+  process.env.CORS_ORIGIN   // عنوان مخصص من .env
+].filter(Boolean);
+
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  origin: (origin, callback) => {
+    // السماح بالطلبات بدون origin (مثل Postman)
+    if (!origin) return callback(null, true);
+    
+    // التحقق من القائمة المسموحة
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
@@ -66,6 +83,7 @@ app.get('/health', (req, res) => {
 
 // API Routes
 app.use('/api/v1/companies', companyRoutes);
+app.use('/api/v1/admin', adminRoutes);
 
 // Root Route
 app.get('/', (req, res) => {
@@ -75,7 +93,8 @@ app.get('/', (req, res) => {
     version: '1.0.0',
     endpoints: {
       health: '/health',
-      companies: '/api/v1/companies'
+      companies: '/api/v1/companies',
+      admin: '/api/v1/admin'
     }
   });
 });

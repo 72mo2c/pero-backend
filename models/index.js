@@ -6,6 +6,8 @@ const Company = require('./Company');
 const Subscription = require('./Subscription');
 const CompanySettings = require('./CompanySettings');
 const RefreshToken = require('./RefreshToken');
+const Admin = require('./Admin');
+const AuditLog = require('./AuditLog');
 
 // ======================================
 // تعريف العلاقات بين النماذج
@@ -47,6 +49,18 @@ RefreshToken.belongsTo(Company, {
   as: 'company'
 });
 
+// Admin -> AuditLogs (One-to-Many)
+Admin.hasMany(AuditLog, {
+  foreignKey: 'admin_id',
+  as: 'auditLogs',
+  onDelete: 'CASCADE'
+});
+
+AuditLog.belongsTo(Admin, {
+  foreignKey: 'admin_id',
+  as: 'admin'
+});
+
 // ======================================
 // تصدير النماذج
 // ======================================
@@ -55,5 +69,7 @@ module.exports = {
   Company,
   Subscription,
   CompanySettings,
-  RefreshToken
+  RefreshToken,
+  Admin,
+  AuditLog
 };
