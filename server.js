@@ -19,7 +19,6 @@ const { generalLimiter } = require('./middleware/rateLimiter');
 
 // Initialize Express
 const app = express();
-const PORT = process.env.PORT || 5000;
 
 // ======================================
 // Middleware Configuration
@@ -101,57 +100,80 @@ app.use((err, req, res, next) => {
 });
 
 // ======================================
-// Database Connection & Server Start
+// Database Connection & Server Initialization
 // ======================================
 
-const startServer = async () => {
-  try {
-    console.log('🚀 Starting Bero Company SaaS Backend...\n');
+let isDatabaseInitialized = false;
 
-    // اختبار الاتصال بقاعدة البيانات
+const initializeDatabase = async () => {
+  if (isDatabaseInitialized) return true;
+  
+  try {
     console.log('📊 Connecting to PostgreSQL database...');
     const isConnected = await testConnection();
 
     if (!isConnected) {
-      console.error('❌ Failed to connect to database. Exiting...');
-      process.exit(1);
+      console.error('❌ Failed to connect to database');
+      return false;
     }
 
-    // مزامنة قاعدة البيانات (إنشاء الجداول)
     console.log('🔄 Synchronizing database...');
     await syncDatabase(false); // false = لا تحذف البيانات
-
-    // بدء الخادم
-    app.listen(PORT, () => {
-      console.log('\n✅ Server started successfully!');
-      console.log(`📡 Server running on port ${PORT}`);
-      console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
-      console.log(`🔗 API URL: http://localhost:${PORT}`);
-      console.log(`🏥 Health Check: http://localhost:${PORT}/health`);
-      console.log(`📚 API Docs: http://localhost:${PORT}/api/v1/companies`);
-      console.log('\n🎉 Ready to accept requests!\n');
-    });
-
+    
+    isDatabaseInitialized = true;
+    console.log('✅ Database initialized successfully');
+    return true;
   } catch (error) {
-    console.error('❌ Failed to start server:', error.message);
-    process.exit(1);
+    console.error('❌ Database initialization failed:', error.message);
+    return false;
   }
 };
 
-// التعامل مع الإغلاق بشكل صحيح
-process.on('SIGTERM', async () => {
-  console.log('\n⚠️ SIGTERM received. Closing server gracefully...');
-  await sequelize.close();
-  process.exit(0);
+// Initialize database on cold start (for Vercel)
+initializeDatabase().then(success => {
+  if (success) {
+    console.log('🚀 Bero Company SaaS Backend initialized successfully!');
+  } else {
+    console.log('⚠️ Backend running with database connection issues');
+  }
 });
 
-process.on('SIGINT', async () => {
-  console.log('\n⚠️ SIGINT received. Closing server gracefully...');
-  await sequelize.close();
-  process.exit(0);
-});
-
-// بدء التشغيل
-startServer();
+// ======================================
+// Vercel Serverless Export
+// ======================================
 
 module.exports = app;
+
+// ======================================
+// Local Development Only
+// ======================================
+
+if (require.main === module) {
+  const PORT = process.env.PORT || 5000;
+  
+  const startLocalServer = async () => {
+    try {
+      console.log('🚀 Starting local server...');
+      
+      const dbSuccess = await initializeDatabase();
+      if (!dbSuccess) {
+        console.log('⚠️ Starting server with database issues...');
+      }
+
+      app.listen(PORT, () => {
+        console.log('\n✅ Local server started successfully!');
+        console.log(`📡 Server running on port ${PORT}`);
+        console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
+        console.log(`🔗 API URL: http://localhost:${PORT}`);
+        console.log(`🏥 Health Check: http://localhost:${PORT}/health`);
+        console.log('\n🎉 Ready to accept requests!\n');
+      });
+
+    } catch (error) {
+      console.error('❌ Failed to start local server:', error.message);
+      process.exit(1);
+    }
+  };
+
+  startLocalServer();
+}
