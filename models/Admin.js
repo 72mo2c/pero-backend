@@ -3,7 +3,7 @@
 // ======================================
 
 const { DataTypes } = require('sequelize');
-const sequelize = require('../config/database');
+const { sequelize } = require('../config/database');
 const bcrypt = require('bcrypt');
 
 const Admin = sequelize.define('Admin', {
